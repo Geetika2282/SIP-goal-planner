@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Local persisted logs (audit trail is machine-specific, not source)
+data/*.json
+data/*.txt
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
