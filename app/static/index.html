@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIP Goal Planner</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%231C3A56' stroke='%232B2F33' stroke-width='2'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='17' font-weight='700' fill='%23FFFFFF' text-anchor='middle'%3E%E2%82%B9%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #1C3A56;
+    --navy-deep: #122840;
+    --white: #FFFFFF;
+    --off-white: #F7F8F9;
+    --charcoal: #2B2F33;
+    --charcoal-soft: #5B6169;
+    --charcoal-faint: #9198A0;
+    --divider: #E1E4E7;
+    --stamp-green: #3E6B5C;
+    --error: #A23E35;
+    --navbar-h: 58px;
+  }
+
+  *{box-sizing:border-box;}
+  html{ scroll-behavior:smooth; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Inter', sans-serif;
+    color: var(--charcoal);
+    background: var(--white);
+  }
+  a{ color: inherit; }
+
+  /* ---------- Sticky navbar ---------- */
+  .site-nav{
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--navbar-h);
+    background: var(--navy-deep);
+    display:flex;
+    align-items:center;
+  }
+  .site-nav-inner{
+    width: 100%;
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 32px;
+  }
+  .brand{
+    display: flex; align-items: center; gap: 10px;
+    color: var(--white);
+    font-family: 'Zilla Slab', serif;
+    font-weight: 700;
+    font-size: 16px;
+    white-space: nowrap;
+  }
+  .brand .coin{
+    width: 24px; height: 24px; flex: none; border-radius: 50%;
+    background: var(--white); color: var(--navy-deep);
+    display: flex; align-items: center; justify-content: center;
+    font-family: Georgia, serif; font-weight: 700; font-size: 13px;
+  }
+  .nav-links{ display: flex; align-items: center; gap: 22px; }
+  .nav-links a{
+    color: rgba(255,255,255,0.62);
+    text-decoration: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    transition: color .15s ease;
+  }
+  .nav-links a:hover{ color: var(--white); }
+  .nav-status{
+    display: flex; align-items: center; gap: 7px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px; color: rgba(255,255,255,0.62); white-space: nowrap;
+  }
+  .nav-status .dot{ width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); }
+  .nav-status.connected .dot{ background: #6FA88F; }
+  .nav-status.unreachable .dot{ background: #C77A72; }
+
+  /* ---------- Hero: compact, headline + one line, no clutter ---------- */
+  .hero{
+    background: var(--navy);
+    padding: 34px 32px;
+  }
+  .hero-inner{ width: 75%; max-width: 1300px; margin: 0 auto; }
+  .hero h1{
+    font-family:'Zilla Slab', serif;
+    font-weight:700;
+    font-size: clamp(22px, 2.6vw, 28px);
+    color: var(--white);
+    margin: 0 0 6px;
+    letter-spacing: 0.01em;
+  }
+  .hero p.lede{
+    margin:0; font-size: 13.5px; color: rgba(255,255,255,0.7); max-width: 620px; line-height: 1.55;
+  }
+
+  /* ---------- Main ledger section ---------- */
+  main{
+    background: var(--white);
+    min-height: calc(100vh - var(--navbar-h) - 220px);
+    padding: 34px 32px 52px;
+  }
+  .ledger-inner{ width: 75%; max-width: 1300px; margin: 0 auto; position: relative; }
+  .ledger-inner::before{
+    content:""; position:absolute; left: 46px; top: 6px; bottom: 30px; width:1px;
+    background: var(--divider);
+  }
+
+  .col-headers{
+    display:grid; grid-template-columns: 40px 1fr;
+    font-family:'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--charcoal-faint);
+    padding-bottom: 8px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .entry-form{ display:grid; grid-template-columns: 40px 1fr; gap: 0 16px; padding: 14px 0 18px; }
+  .entry-form .sl{ font-family:'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--charcoal-faint); padding-top: 10px; }
+  .entry-form label{
+    display:block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--charcoal-soft); margin-bottom: 6px; font-weight: 600;
+  }
+  textarea#query{
+    width:100%; min-height: 60px; resize: vertical; border: none;
+    border-bottom: 1.5px dashed var(--divider); background: transparent;
+    font-family:'Zilla Slab', serif; font-size: 16px; color: var(--charcoal);
+    padding: 6px 2px 10px; outline: none;
+  }
+  textarea#query::placeholder{ color: var(--charcoal-faint); font-style: italic; }
+  textarea#query:focus{ border-bottom-color: var(--navy); }
+
+  .form-row{
+    display:flex; justify-content: space-between; align-items:center;
+    margin-top: 12px; flex-wrap: wrap; gap: 8px;
+  }
+  .hint{ font-size: 11px; color: var(--charcoal-faint); font-family:'IBM Plex Mono', monospace; }
+  button#post-btn{
+    background: var(--navy); color: var(--white); border:none; padding: 10px 22px;
+    border-radius: 3px; font-family:'IBM Plex Mono', monospace; font-size: 12px;
+    font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; cursor:pointer;
+    transition: background .15s ease, transform .1s ease;
+  }
+  button#post-btn:hover{ background: var(--navy-deep); }
+  button#post-btn:active{ transform: translateY(1px); }
+  button#post-btn:disabled{ background:#9198A0; cursor: progress; }
+  button#post-btn:focus-visible, textarea#query:focus-visible{ outline: 2px solid var(--navy); outline-offset: 2px; }
+
+  #entries{ display:flex; flex-direction:column; }
+  .entry{
+    display:grid; grid-template-columns: 40px 1fr; gap: 0 16px; padding: 16px 0;
+    border-bottom: 1px solid var(--divider); animation: settle .35s ease both;
+  }
+  @keyframes settle{ from{ opacity:0; transform: translateY(6px);} to{ opacity:1; transform: translateY(0);} }
+  .entry .sl{ font-family:'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--charcoal-faint); padding-top: 2px; }
+
+  .entry-head{ display: flex; justify-content: flex-start; margin-bottom: 6px; }
+  .delete-btn{
+    background: transparent; border: 1px solid rgba(162,62,53,0.35); color: var(--error);
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 9px; border-radius: 3px;
+    cursor: pointer; opacity: 0.55; transition: opacity .15s ease, background .15s ease;
+  }
+  .delete-btn:hover{ opacity: 1; background: rgba(162,62,53,0.06); }
+
+  .stamp-wrap{ position: relative; }
+  .entry .query-line{
+    font-family:'Zilla Slab', serif; font-style: italic; font-size: 15px;
+    color: var(--charcoal-soft); margin: 0 0 10px;
+  }
+  .entry .answer{ font-size: 14.5px; line-height: 1.6; color: var(--charcoal); margin: 0 0 12px; }
+
+  .tool-box{
+    background: var(--off-white); border: 1px solid var(--divider);
+    border-left: 3px solid var(--stamp-green); padding: 10px 14px; border-radius: 2px;
+    font-family:'IBM Plex Mono', monospace; font-size: 12px; color: var(--charcoal-soft); margin-bottom: 8px;
+  }
+  .tool-box .tool-name{
+    color: var(--stamp-green); font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; font-size: 10.5px; margin-bottom: 4px; display:block;
+  }
+  .tool-box .kv{ display:flex; justify-content: space-between; gap: 12px; padding: 1px 0; }
+  .tool-box .kv b{ color: var(--charcoal); font-weight: 600; }
+  .tool-box .kv-nested{ margin: 2px 0 4px 10px; padding-left: 8px; border-left: 2px solid rgba(62,107,92,0.25); }
+  .tool-box .kv-group-label{ font-weight: 700; text-transform: uppercase; font-size: 10px; color: var(--charcoal); padding-top: 4px; }
+
+  .stamp{
+    position:absolute; top: -6px; right: 4px; border: 1.5px solid var(--stamp-green);
+    color: var(--stamp-green); font-family:'IBM Plex Mono', monospace; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 3px; opacity: 0.9; background: rgba(62,107,92,0.05);
+  }
+  .stamp.neutral{ border-color: var(--charcoal-faint); color: var(--charcoal-soft); background: var(--off-white); }
+  .entry.error .answer{ color: var(--error); }
+  .entry.error .stamp{ border-color: var(--error); color: var(--error); background: rgba(162,62,53,0.05); }
+
+  .empty-state{
+    padding: 24px 0 10px; font-family:'Zilla Slab', serif; font-style: italic;
+    color: var(--charcoal-faint); font-size: 14px;
+  }
+  .pending{ padding: 10px 0; font-family:'IBM Plex Mono', monospace; font-size: 12px; color: var(--charcoal-soft); }
+  .pending .dots::after{ content:''; animation: dots 1.2s steps(4,end) infinite; }
+  @keyframes dots{ 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} 100%{content:'';} }
+
+  /* ---------- How it works ---------- */
+  .how{ background: var(--off-white); border-top: 1px solid var(--divider); padding: 36px 32px; }
+  .how-inner{ width: 75%; max-width: 1300px; margin: 0 auto; }
+  .how h2{ font-family:'Zilla Slab', serif; font-size: 18px; margin: 0 0 18px; color: var(--navy); }
+  .how-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .how-card{ background: var(--white); border: 1px solid var(--divider); border-radius: 4px; padding: 14px 16px 16px; }
+  .how-card .num{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--charcoal-faint); letter-spacing: 0.06em; }
+  .how-card h3{ font-family:'Zilla Slab', serif; font-size: 14.5px; margin: 6px 0 6px; color: var(--charcoal); }
+  .how-card p{ font-size: 12px; color: var(--charcoal-soft); line-height: 1.5; margin: 0; }
+
+  footer{
+    text-align:center; font-family:'IBM Plex Mono', monospace; font-size: 10px;
+    color: var(--charcoal-faint); padding: 18px 20px 24px; letter-spacing: 0.04em; background: var(--white);
+  }
+
+  @media (max-width: 900px){
+    .hero-inner, .ledger-inner, .how-inner{ width: 90%; }
+  }
+  @media (max-width: 720px){ .how-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px){
+    .site-nav-inner{ padding: 0 16px; }
+    .nav-links{ display:none; }
+    .hero{ padding: 26px 16px; }
+    .hero-inner, .ledger-inner, .how-inner{ width: 100%; }
+    main{ padding: 24px 16px 40px; }
+    .ledger-inner::before{ left: 34px; }
+    .col-headers, .entry-form, .entry{ grid-template-columns: 28px 1fr; gap: 0 10px; }
+    .how{ padding: 28px 16px; }
+    .how-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-nav">
+  <div class="site-nav-inner">
+    <div class="brand"><span class="coin">₹</span> SIP Goal Planner</div>
+    <nav class="nav-links">
+      <a href="#ledger">Ledger</a>
+      <a href="#how-it-works">How it works</a>
+    </nav>
+    <div class="nav-status" id="nav-status"><span class="dot"></span><span id="status-pill">Checking…</span></div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Reach your investment goal, on your terms.</h1>
+    <p class="lede">Tell us your target, timeline, or monthly budget — get a clear, numbers-backed plan instantly.</p>
+  </div>
+</section>
+
+<main id="ledger">
+  <div class="ledger-inner">
+    <div class="col-headers">
+      <span>SL</span>
+      <span>Entry</span>
+    </div>
+
+    <form class="entry-form" id="plan-form">
+      <div class="sl">01</div>
+      <div>
+        <label for="query">Your SIP goal</label>
+        <textarea id="query" placeholder="e.g. I want ₹50 lakh in 10 years, expecting 12% annual returns — how much should I invest monthly?" required></textarea>
+        <div class="form-row">
+          <span class="hint">Amounts, rate &amp; timeline in one sentence work best</span>
+          <button id="post-btn" type="submit">Post Entry →</button>
+        </div>
+      </div>
+    </form>
+
+    <div id="entries">
+      <div class="empty-state" id="empty-state">No entries posted yet — your first plan will appear here.</div>
+    </div>
+  </div>
+</main>
+
+<section class="how" id="how-it-works">
+  <div class="how-inner">
+    <h2>How this works</h2>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="num">01</div>
+        <h3>Maturity value</h3>
+        <p>You know the monthly amount, rate &amp; years → get the final corpus.</p>
+      </div>
+      <div class="how-card">
+        <div class="num">02</div>
+        <h3>Required SIP</h3>
+        <p>You know the target, rate &amp; years → get the required monthly investment.</p>
+      </div>
+      <div class="how-card">
+        <div class="num">03</div>
+        <h3>Required duration</h3>
+        <p>You know the monthly amount, rate &amp; target → get the time needed.</p>
+      </div>
+      <div class="how-card">
+        <div class="num">04</div>
+        <h3>Required return</h3>
+        <p>You know the monthly amount, target &amp; years → get the return you'd need.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>For illustration purposes only — not financial advice.</footer>
+
+<script>
+  const API_BASE = window.location.origin;
+  const form = document.getElementById('plan-form');
+  const queryInput = document.getElementById('query');
+  const entriesEl = document.getElementById('entries');
+  const postBtn = document.getElementById('post-btn');
+  const statusPill = document.getElementById('status-pill');
+  const navStatus = document.getElementById('nav-status');
+
+  let entryCount = 0;
+
+  async function checkHealth(){
+    try{
+      const res = await fetch(`${API_BASE}/health`);
+      const ok = res.ok;
+      statusPill.textContent = ok ? 'Connected' : 'Unreachable';
+      navStatus.classList.toggle('connected', ok);
+      navStatus.classList.toggle('unreachable', !ok);
+    }catch(e){
+      statusPill.textContent = 'Unreachable';
+      navStatus.classList.add('unreachable');
+    }
+  }
+  checkHealth();
+
+  function slNumber(n){ return String(n).padStart(2,'0'); }
+
+  function formatValue(v){
+    if (typeof v === 'number') return v.toLocaleString('en-IN');
+    if (Array.isArray(v)) return v.join(', ');
+    return v;
+  }
+
+  function renderKvBlock(obj){
+    return Object.entries(obj).map(([k, v]) => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        return `<div class="kv-group-label">${k}</div><div class="kv-nested">${renderKvBlock(v)}</div>`;
+      }
+      return `<div class="kv"><span>${k}</span><b>${formatValue(v)}</b></div>`;
+    }).join('');
+  }
+
+  function renderToolBox(call){
+    const args = call.args && typeof call.args === 'object' ? renderKvBlock(call.args) : '';
+    const result = call.result && typeof call.result === 'object'
+      ? renderKvBlock(call.result)
+      : `<div class="kv"><span>result</span><b>${formatValue(call.result)}</b></div>`;
+    return `
+      <div class="tool-box">
+        <span class="tool-name">${call.tool.replaceAll('_',' ')}</span>
+        ${args}
+        <div style="height:6px"></div>
+        ${result}
+      </div>`;
+  }
+
+  function freshEmptyState(){
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.id = 'empty-state';
+    div.textContent = 'No entries posted yet — your first plan will appear here.';
+    return div;
+  }
+
+  function renumberEntries(){
+    entryCount = 0;
+    [...entriesEl.children].forEach(el => {
+      if (!el.classList.contains('entry')) return;
+      entryCount += 1;
+      const sl = el.querySelector('.sl');
+      if (sl) sl.textContent = slNumber(entryCount);
+    });
+  }
+
+  async function deleteEntry(entryEl){
+    const id = entryEl.dataset.id;
+    const original = entryEl.style.opacity;
+    entryEl.style.opacity = '0.4';
+    try{
+      if (id) {
+        const res = await fetch(`${API_BASE}/entries/${id}`, { method: 'DELETE' });
+        if (!res.ok) { entryEl.style.opacity = original; return; }
+      }
+      entryEl.remove();
+      renumberEntries();
+      if (!entriesEl.querySelector('.entry')) {
+        entriesEl.appendChild(freshEmptyState());
+      }
+    }catch(e){
+      entryEl.style.opacity = original;
+    }
+  }
+
+  function addEntry({ id, query, answer, tool_calls, isError }, opts = {}){
+    const es = document.getElementById('empty-state');
+    if (es) es.remove();
+    entryCount += 1;
+
+    const hadTools = (tool_calls || []).length > 0;
+    const stampText = isError ? 'Entry Rejected' : (hadTools ? 'Computed' : 'Noted');
+    const stampClass = isError ? 'error' : (hadTools ? '' : 'neutral');
+
+    const entry = document.createElement('div');
+    entry.className = 'entry' + (isError ? ' error' : '');
+    entry.dataset.id = id || '';
+    entry.innerHTML = `
+      <div class="sl">${slNumber(entryCount)}</div>
+      <div class="stamp-wrap">
+        <div class="entry-head"><button type="button" class="delete-btn">Delete</button></div>
+        <p class="query-line">&ldquo;${query}&rdquo;</p>
+        ${(tool_calls || []).map(renderToolBox).join('')}
+        <p class="answer">${answer}</p>
+        <span class="stamp ${stampClass}">${stampText}</span>
+      </div>
+    `;
+    entriesEl.appendChild(entry);
+    entry.querySelector('.delete-btn').addEventListener('click', () => deleteEntry(entry));
+
+    if (!opts.skipAnimation) entry.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+
+  function addPending(){
+    const p = document.createElement('div');
+    p.className = 'pending';
+    p.id = 'pending-row';
+    p.innerHTML = 'Posting entry, working on your plan<span class="dots"></span>';
+    entriesEl.appendChild(p);
+    return p;
+  }
+
+  async function loadHistory(){
+    try{
+      const res = await fetch(`${API_BASE}/entries`);
+      if (!res.ok) return;
+      const data = await res.json();
+      data.forEach(e => addEntry({
+        id: e.id,
+        query: e.query,
+        answer: e.answer,
+        tool_calls: e.tool_calls,
+        isError: e.is_error
+      }, { skipAnimation: true }));
+    }catch(e){ /* fresh install, nothing persisted yet - fine */ }
+  }
+  loadHistory();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const query = queryInput.value.trim();
+    if(!query) return;
+
+    postBtn.disabled = true;
+    postBtn.textContent = 'Posting…';
+    const pendingRow = addPending();
+
+    try{
+      const res = await fetch(`${API_BASE}/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+
+      pendingRow.remove();
+
+      if(!res.ok){
+        const errBody = await res.json().catch(() => ({}));
+        addEntry({
+          query,
+          answer: errBody.detail || `Something went wrong (status ${res.status}). Please try again.`,
+          tool_calls: [],
+          isError: true
+        });
+      } else {
+        const data = await res.json();
+        addEntry({
+          id: data.id,
+          query,
+          answer: data.answer,
+          tool_calls: data.tool_calls || [],
+          isError: false
+        });
+      }
+    } catch(err){
+      pendingRow.remove();
+      addEntry({
+        query,
+        answer: 'Could not reach the server. Please check your connection and try again.',
+        tool_calls: [],
+        isError: true
+      });
+    } finally {
+      postBtn.disabled = false;
+      postBtn.textContent = 'Post Entry →';
+      queryInput.value = '';
+    }
+  });
+</script>
+
+</body>
+</html>
